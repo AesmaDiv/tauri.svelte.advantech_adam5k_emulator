@@ -17,6 +17,10 @@
   function onChangeValue() {
     setAnalog(slot_num, cur_channel, range.valueAsNumber);
   }
+  function onChangeText(event: Event) {
+    range.valueAsNumber = (<HTMLInputElement>event.target).valueAsNumber;
+    onChangeValue()
+  }
   function onChangeChannel(channel: number) {
     cur_channel = channel;
     cur_value = channels[channel];
@@ -37,7 +41,7 @@
 <div class="root">
   <input type="range" bind:this={range} max={max_value} bind:value={cur_value} on:change={onChangeValue}/>
   <div class="config">
-    <input type="number" value={cur_value}/>
+    <input type="number" value={cur_value} on:change={onChangeText}/>
     <select on:change={onChangeRange}>
       {#each RANGES as rng}
       <option selected={rng === RANGES[3]}>{rng}</option>
