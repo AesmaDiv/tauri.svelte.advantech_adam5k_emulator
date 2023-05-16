@@ -10,7 +10,7 @@
   let range : HTMLInputElement;
 
   let max_value = MAXRNG[3];
-  let channels : Uint16Array = new Uint16Array([0xffff,0xefff,0xdfff,0xcfff,0xbfff,0xafff,0x9fff,0x8fff]);
+  let channels : Uint16Array = new Uint16Array(8)
   let cur_channel : number = 0;
   let cur_value : number = channels[cur_channel];
 
@@ -47,11 +47,6 @@
   <div class="channels">
     {#each channels as val, i}
     <ChannelAnalog channel={i} value={val} selected={i === 0} onSelect={onChangeChannel}/>
-    <!-- <div class="channel">
-      <div class="channel-index">{i} :</div>
-      <div class="channel-value">{val}</div>
-      <input type="radio" name="channel" id="channel {i}" checked={i === 0} on:change={onChangeChannel}/>
-    </div> -->
     {/each}
   </div>
 </div>

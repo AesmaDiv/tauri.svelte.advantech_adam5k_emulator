@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/tauri";
+import { message } from "@tauri-apps/api/dialog";
 import { get, writable, type Writable } from "svelte/store";
 import type { AdamData } from "./types";
 import { parseAnalog, parseDigital } from "./common";
@@ -7,20 +8,35 @@ export const ADAMDATA: Writable<AdamData> = writable({
   analog: new Uint16Array(64),
   digital: new Uint8Array(64)
 });
-export let IPAddress: Writable<string> = writable("0.0.0.0:502");
+export let IPAddress: Writable<string> = writable("127.0.0.1");
+export let ServerState: boolean = false;
 
 async function request(bytes: number[]): Promise<number[]> {
   let ip = get(IPAddress);
   return await invoke("send_request", { ip, bytes });
 }
 
-export async function runServer() {
-  let ip = get(IPAddress);
-  console.log(ip)
-  await invoke("run_server", { ip });
+export async function switchServerState() : Promise<boolean> {
+  return ServerState ? stopServer() : runServer();
 }
-export async function stopServer() {
-  const response: number[] = await request([2, 2]);
+
+async function runServer() {
+  let ip = get(IPAddress);
+  let result = await invoke("run_server", { ip });
+  console.log("Запуск сервера по адресу %o -> %o", ip, result);
+  ServerState = !!result;
+
+  if (!result) await message("Failed to start server", "Tauri");
+
+  return ServerState;
+}
+async function stopServer() {
+  console.log("Остановка сервера");
+  await request([2, 2]);
+  await request([2, 2]);
+  ServerState = false;
+
+  return ServerState;
 }
 export async function printMap() {
   const response: number[] = await request([1, 1]);

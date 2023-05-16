@@ -12,7 +12,8 @@
 
   $: state = (() => {
     let result = group === header;
-    !!root && root.style.setProperty("--background", result ? "aqua" : "white");
+    root?.style.setProperty("--background", result ? "rgb(100, 210, 255)" : "white");
+    root?.style.setProperty("--shadow", result ? "0px 2px 2px black" : "0px 5px 10px black");
     return result;
   })();
 </script>
@@ -33,11 +34,11 @@
     color: black;
     background-color: var(--background);
     border-radius: 5px;
-    box-shadow: 0px 5px 10px black;
+    box-shadow: var(--shadow);
     display: flex;
     flex-direction: row;
     margin: 13px 3px;
-    transition: background-color 500ms;
+    transition: background-color 500ms, box-shadow 500ms;
   }
   .header-container {
     width: 2em;

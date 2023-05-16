@@ -1,46 +1,35 @@
 <script lang="ts">
-  import { runServer, stopServer, refreshRegisters, printMap, IPAddress } from "./shared/store";
+  import { switchServerState, refreshRegisters, IPAddress } from "./shared/store";
   import SlotAnalog from "./lib/SlotAnalog.svelte";
   import SlotDigital from "./lib/SlotDigital.svelte";
   import Slider from "./lib/Slider.svelte";
   import TextBox from "./lib/TextBox.svelte";
+  import ButtonToggle from "./lib/ButtonToggle.svelte";
 
+  const BTN_TITLE = ['START SERVER', 'STOP SERVER'];
   let group_analog: string = 'SLOT 0';
   let group_digital: string = 'SLOT 0';
-  let timer: NodeJS.Timer;
-  let timer_title: string = 'RUN SERVER';
+  let reader: NodeJS.Timer;
+  let btn_state = false;
 
   async function onClick(event: Event) {
-    switch ((<HTMLElement>event.target).id) {
-      case "btn_read": {
-        refresh();
-      } break;
-      case "btn_print": {
-        runServer();
-        // await printMap();
-      } break;
-    }
-  }
+    switchServerState().then(state => {
+      btn_state = state;
+      if (state && !reader) {
+        reader = setInterval(() => (async() => await refreshRegisters())(), 1000);
+      } else {
+        clearInterval(reader);
+        reader = undefined;
+      }
+    });
+  };
 
-  function refresh() {
-    if (!timer) {
-      timer = setInterval(() => (async() => await refreshRegisters())(), 1000);
-      timer_title = 'STOP SERVER';
-    } else {
-      clearInterval(timer);
-      timer = undefined;
-      timer_title = 'RUN SERVER';
-    }
-  }
 </script>
 
 <main class="container">
   <div class="title">
-    <TextBox title="IP:port" bind:value={$IPAddress}/>
-    <div class="buttons">
-      <button id="btn_read" class="button" on:click={onClick}>{timer_title}</button>
-      <button id="btn_print" class="button" on:click={onClick}>&#62;_</button>
-    </div>
+    <TextBox title="IP ADDRESS" width="190px" backgroundColor="lightgrey" bind:value={$IPAddress}/>
+    <ButtonToggle titles={BTN_TITLE} state={btn_state} onToggle={onClick}/>
   </div>
   <div class="slots_group">
     {#each Array(8) as _, i}
@@ -77,4 +66,5 @@
     display: flex;
     flex-direction: row;
   }
+
 </style>

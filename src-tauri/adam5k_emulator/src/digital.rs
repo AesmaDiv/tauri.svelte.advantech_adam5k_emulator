@@ -1,15 +1,41 @@
+use crate::{Registers, Printable};
 use std::convert::TryInto;
+
 #[derive (Debug)]
+/// Карта регистров дискретных каналов
 pub struct Digital {
   pub channels: u128,
 }
 
 impl Digital {
+  /// Конструктор
   pub fn new() -> Self {
     Self { channels: 0u128 }
   }
-  /// Получение состояний каналов
-  pub fn get_registers(&self, address: usize, count: usize) -> Vec<u8> {
+  /// Запись состояния канала по адресу
+  pub fn set_coil(&mut self, address: usize, value: bool) -> bool {
+    if address > 127 { 
+      println!("Digital:GetRegisters:Error = Wrong parameters");
+      return false;
+    }
+    self.switch_bits(address, if value { 1u128 } else { 0u128 }, 1);
+    return true;
+  }
+  /// Запись состояния канала по номерам слота и канала
+  pub fn set_slot_channel(&mut self, slot: usize, channel: usize, value: bool) -> bool {
+    self.set_coil(slot * 16 + channel, value)
+  }
+  /// Переключение состояний нескольких каналов согласно маске
+  fn switch_bits(&mut self, address: usize, mut bits: u128, bit_len: usize) {
+    let mut mask = u128::MAX;
+    mask = mask >> (128 - bit_len) << address;
+    bits <<= address;
+    self.channels = !mask & self.channels | bits;
+  }
+}
+
+impl Registers for Digital {
+  fn get_registers(&self, address: usize, count: usize) -> Vec<u8> {
     if count == 0 || address + count > 128 { 
       println!("Digital:GetRegisters:Error = Wrong parameters");
       return Vec::new();
@@ -18,9 +44,6 @@ impl Digital {
     let lshift = 128 - (address + count);
     let rshift = 128 - count;
     let value = (self.channels << lshift) >> rshift;
-    // println!("\n     {}", (0..13).map(|_| "9876543210").collect::<String>().trim_start_matches("98"));
-    // println!("FULL {:0128b}", self.channels);
-    // println!("BITS {:0128b}\n", value);
 
     let num_of_bytes = 15 - (count - 1) / 8;
     let result = Vec::from(value.to_ne_bytes())
@@ -29,8 +52,7 @@ impl Digital {
 
     return result;
   }
-
-  pub fn set_registers(&mut self, address: usize, values: &[u8]) -> bool {
+  fn set_registers(&mut self, address: usize, values: &[u8]) -> bool {
     let length = values.len();
     if address > 127 || length == 0 || length > 16 { 
       println!("Digital:GetRegisters:Error = Wrong parameters");
@@ -48,34 +70,10 @@ impl Digital {
 
     return true;
   }
+}
 
-  pub fn set_coil(&mut self, address: usize, value: bool) -> bool {
-    if address > 127 { 
-      println!("Digital:GetRegisters:Error = Wrong parameters");
-      return false;
-    }
-    self.switch_bits(address, if value { 1u128 } else { 0u128 }, 1);
-    return true;
-  }
-
-  pub fn set_slot_channel(&mut self, slot: usize, channel: usize, value: bool) -> bool {
-    self.set_coil(slot * 16 + channel, value)
-  }
-
-  fn switch_bits(&mut self, address: usize, mut bits: u128, bit_len: usize) {
-    let mut mask = u128::MAX;
-    mask = mask >> (128 - bit_len) << address;
-    bits <<= address;
-
-    // println!("\n     {}", (0..13).map(|_| "9876543210").collect::<String>().trim_start_matches("98"));
-    // println!("FULL {:0128b}", self.channels);
-    // println!("Mask {:0128b}", mask);
-    // println!("Bits {:0128b}", bits);
-    self.channels = !mask & self.channels | bits;
-    // println!("RSLT {:0128b}\n", self.channels);
-  }
-
-  pub fn print(&self) {
+impl Printable for Digital {
+  fn print(&self) {
     let bitstring: String = format!("{:0128b}", self.channels)
     .chars()
     .rev()
@@ -94,5 +92,4 @@ impl Digital {
     .collect::<String>();
     println!("\nDIGITAL 01234567{bitstring}");
   }
-
 }

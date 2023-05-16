@@ -20,13 +20,14 @@
 <div class="channel">
   <div class="channel-index">{channel} :</div>
   <div bind:this={label}>{current_state ? 'ON' : 'OFF'}</div>
-  <div class="switch-container" on:mousedown={onChangeValue}>
+  <div class="switch-container {current_state ? 'enabled' : ''}" on:mousedown={onChangeValue}>
     <div bind:this={thumb} class="switch-thumb {current_state ? 'enabled' : ''}"/>
   </div>
 </div>
 
 <style>
   .channel {
+    /* width: fit-content; */
     display: flex;
     flex-direction: row;
     justify-content: space-between;
@@ -40,20 +41,25 @@
   .switch-container {
     width: 3em;
     height: 1.4em;
-    background-color: green;
     border-radius: 0.7em;
     display: flex;
     align-items: center;
+    background-color: grey;
+    transition: background-color 250ms;
+  }
+  .switch-container.enabled {
+    background-color: green;
   }
   .switch-thumb {
-    width: 1.5em;
-    height: 20px;
+    width: 1.3em;
+    height: 1.3em;
     background-color: white;
     border-radius: 0.65em;
     margin-left: 0.05em;
     transition: margin-left 250ms;
   }
   .switch-thumb.enabled {
-    margin-left: 1.45em;
+    margin-left: 1.65em;
+    
   }
 </style>

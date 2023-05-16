@@ -4,7 +4,7 @@
 
   export let slot_num : number = 0;
 
-  let channels : Uint8Array = new Uint8Array([0,1,0,1,0,1,0,1]);
+  let channels : Uint8Array = new Uint8Array(8);
 
   function onChangeValue(channel: number, value: boolean) {
     setDigital(slot_num, channel, value ? 0: 1);
@@ -13,14 +13,13 @@
   ADAMDATA.subscribe(data => {
     let address = slot_num * 8;
     channels = data.digital.slice(address, address + 8);
-    // state?.style.removeProperty("outline");
   });
 </script>
 
 <div class="root">
   <div class="channels">
     {#each channels as val, i}
-      <ChannelDigital channel={i} state={val === 1} onChange={onChangeValue}/>
+    <ChannelDigital channel={i} state={val === 1} onChange={onChangeValue}/>
     {/each}
   </div>
 </div>
@@ -39,9 +38,9 @@
   }
   .channels {
     width: 100%;
+    height: 250px;
     display: flex;
-    flex-direction: column;
-    justify-content: center;
+    flex-flow: column wrap;
     gap: 5px;
   }
 

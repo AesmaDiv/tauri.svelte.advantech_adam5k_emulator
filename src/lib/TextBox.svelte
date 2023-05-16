@@ -72,10 +72,8 @@
     height: fit-content;
     padding: 0.3em 2px 2px;
     overflow: hidden;
-
     color: var(--color);
     font-size: var(--fontSize);
-    background-color: var(--backgroundColor);
   }
   .decor {
     display: flex;
@@ -84,6 +82,7 @@
     align-content: center;
     width: var(--width);
     border: 2px solid var(--borderColor);
+    background-color: var(--backgroundColor);
     font-size: var(--fontSize);
     border-radius: 1ch;
     position: relative;
@@ -109,7 +108,7 @@
     white-space: nowrap;
     line-height: 1em;
     background-color: var(--backgroundColor);
-
+    border-radius: 0.25em;
     position: absolute;
     top: var(--labelTop);
     left: var(--labelLeft);

@@ -9,20 +9,42 @@ use std::net::{TcpListener, TcpStream, Shutdown};
 use std::io::{Write, Read};
 use std::sync::{Arc, Mutex};
 
+/// Интерфейсы карт регистров
+pub trait Printable {
+  /// Вывод карты регистров в консоль
+  fn print(&self);
+}
+pub trait Registers {
+  /// Чтение значений из карты регистров
+  fn get_registers(&self, address: usize, count: usize) -> Vec<u8>;
+  /// Запись значений в карту регистров
+  fn set_registers(&mut self, address: usize, values: &[u8]) -> bool;
+}
+
+#[derive (Debug)]
+struct AdamData {
+  /// карта регистров аналоговых каналов
+  pub analog: Mutex<Analog>,
+  /// карта регистров дискретных каналов
+  pub digital: Mutex<Digital>,
+  /// флаг состояния сервера
+  pub is_running : Mutex<bool>,
+}
 
 #[derive (Debug)]
 pub struct AdamEmulator {
-  pub analog: Arc<Mutex<Analog>>,
-  pub digital: Arc<Mutex<Digital>>,
-  pub is_running : bool,
+  /// внутренние состояния эмулятора
+  adam_data: Arc<AdamData>
 }
 
 impl AdamEmulator {
   pub fn new() -> Self {
     Self {
-      analog: Arc::new(Mutex::new(Analog::new())),
-      digital: Arc::new(Mutex::new(Digital::new())),
-      is_running: false,
+      adam_data: Arc::new(AdamData {
+        analog: Mutex::new(Analog::new()),
+        digital: Mutex::new(Digital::new()),
+        is_running: Mutex::new(false),
+      })
     }
   }
   pub fn from_maps(analog_map: &str, digital_map: &str) -> Self {
@@ -31,59 +53,70 @@ impl AdamEmulator {
 
     match (analog, digital) {
       (Ok(analog), Ok(digital)) => return Self {
-        analog: Arc::new(Mutex::new(analog)),
-        digital: Arc::new(Mutex::new(digital)),
-        is_running: false,
+        adam_data: Arc::new(AdamData {
+          analog: Mutex::new(analog),
+          digital: Mutex::new(digital),
+          is_running: Mutex::new(false),
+        })
       },
       (Err(err), _) => println!("{:?}", err),
       (_, Err(err)) => println!("{:?}", err),
     }
     AdamEmulator::new()
   }
-  pub fn run(&mut self, ip: String) {
+  pub fn run(&mut self, ip: String) -> bool {
     // запускаем сервер эмулятора и слушаем входящие сообщения
-    self.is_running = true;
+    let ip = ip + ":502";
     match TcpListener::bind(&ip) {
       Ok(listener) => {
         println!("Adam Emulator is listening on {}", ip);
-        for stream in listener.incoming() {
-          match stream {
-            Ok(stream) => {
-              println!("Incoming stream {:?}", stream);
-              // запускаем поток обработки входящего сообщения
-              let analog = self.analog.clone();
-              let digital = self.digital.clone();
-              std::thread::spawn(move ||
-                AdamEmulator::handle_clent(
-                  stream,
-                  analog,
-                  digital
-                )
-              );
-              if !self.is_running { break }
-            },
-            Err(e) => {
-              println!("Stream error: {}", e);
-            },
-          }
-        }
-        drop(listener);
-        println!("Adam Emulator is stopped");
+        AdamEmulator::set_running(&self.adam_data, true);
+        let adam_data = self.adam_data.clone();
+        std::thread::spawn(move || AdamEmulator::handle_listener(listener, &adam_data));
+
+        true
       },
-      Err(err) => println!("Error starting server: {:?}", err)
+      Err(err) => { 
+        println!("Error starting server on {}: {:?}", ip, err);
+        AdamEmulator::set_running(&self.adam_data, false);
+
+        false
+      }
     }
   }
-  fn handle_clent(mut stream: TcpStream, analog: Arc<Mutex<Analog>>, digital: Arc<Mutex<Digital>>) {
+  fn handle_listener(listener: TcpListener, adam_data: &Arc<AdamData>) {
+    for stream in listener.incoming() {
+      if !AdamEmulator::get_running(adam_data) {
+        println!("Stoping server");
+        break;
+      }
+      match stream {
+        Ok(stream) => {
+          println!("Incoming stream {:?}", stream);
+          let adam_data = adam_data.clone();
+          // запускаем поток обработки входящего сообщения
+          std::thread::spawn(move || AdamEmulator::handle_stream(stream, adam_data));
+        },
+        Err(e) => {
+          println!("Stream error: {}", e);
+        },
+      }
+    }
+    drop(listener);
+    println!("Adam Emulator is stopped");
+  }
+  fn handle_stream(mut stream: TcpStream, adam_data: Arc<AdamData>) {
     let mut buf = [0 as u8; 1024];
     // читаем входящий поток
-    while match stream.read(&mut buf) {
+    while AdamEmulator::get_running(&adam_data) && match stream.read(&mut buf) {
       Ok(size) => {
         // получаем запрос, отбрасывая лишние пустые байты
         let request: Vec<u8> = buf[0..size].to_owned();
-        if request.len() == 0 { return; }
+        if size == 0 { return }
+        if AdamEmulator::check_special_command(&request, &adam_data) { return };
         println!("Command: {:?}", &request);
         // обрабатываем запрос и получаем ответ
-        let response = AdamEmulator::get_response(request, analog.clone(), digital.clone());
+        let response = AdamEmulator::get_response(request, &adam_data);
         if response.len() == 0 { return; }
         println!("Answer: {:?}", &response);
         // отправляем ответ клиенту
@@ -101,17 +134,21 @@ impl AdamEmulator {
     drop(stream);
   }
 
-  /// Обработка modbus команды
-  fn get_response(request: Vec<u8>, analog: Arc<Mutex<Analog>>, digital: Arc<Mutex<Digital>>) -> Vec<u8> {
-    let mut guard_analog = analog.lock().unwrap();
-    let mut guard_digital = digital.lock().unwrap();
-    if request.len() < 11 {
-      if request[0] == 1 { guard_analog.print() }
-      if request[1] == 1 { guard_digital.print() }
-      drop(guard_analog);
-      drop(guard_digital);
-      return Vec::new(); 
+  fn check_special_command(request: &Vec<u8>, adam_data: &Arc<AdamData>) -> bool {
+    if request.len() == 2 {
+      if request[0] == 1 { AdamEmulator::print_map(&adam_data.analog) }
+      if request[1] == 1 { AdamEmulator::print_map(&adam_data.digital) }
+      if request[0] == 2 { AdamEmulator::set_running(adam_data, false) }
+      return true;
     }
+    false
+  }
+
+  /// Обработка modbus команды
+  fn get_response(request: Vec<u8>, adam_data: &Arc<AdamData>) -> Vec<u8> {
+    let mut guard_analog = adam_data.analog.lock().unwrap();
+    let mut guard_digital = adam_data.digital.lock().unwrap();
+
     // разбор заголовка запроса [модбас, команда, адрес-регистра, кол-во-регистров/значение]
     let address: usize = usize::from(u16::from_be_bytes(request[8..10].try_into().unwrap()));
     let value: usize = usize::from(u16::from_be_bytes(request[10..12].try_into().unwrap()));
@@ -144,7 +181,7 @@ impl AdamEmulator {
     drop(guard_analog);
     drop(guard_digital);
 
-    return  result;
+    result
   }
 
   /// Формирование ответа
@@ -154,6 +191,31 @@ impl AdamEmulator {
     result.extend(bytes);
     result[5] = result[8] + 3;
 
-    return result;
+    result
+  }
+  /// Установка флага состояния сервера
+  fn set_running(adam_data: &Arc<AdamData>, state: bool) {
+    if let Ok(mut guard) = adam_data.is_running.lock() {
+      *guard = state;
+      drop(guard);
+    }
+  }
+  /// Получение значения флага состояния сервера
+  fn get_running(adam_data: &Arc<AdamData>) -> bool {
+    let mut result = false;
+    if let Ok(guard) = adam_data.is_running.lock() {
+      result = *guard;
+      drop(guard);
+    }
+    println!("Server state is {}", result);
+
+    result
+  }
+  /// Вывод в консоль карты регистров
+  fn print_map<T: Printable>(map: &Mutex<T>) {
+    if let Ok(guard) = map.lock() {
+      guard.print();
+      drop(guard);
+    }
   }
 }
