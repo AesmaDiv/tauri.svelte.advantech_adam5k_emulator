@@ -1,25 +1,21 @@
 <script lang="ts">
-  import { ADAMDATA, setDigital } from "../shared/store";
+  import { ADAMDATA } from "../shared/store";
   import ChannelDigital from "./ChannelDigital.svelte";
 
-  export let slot_num : number = 0;
+  export let slotnum : number = 0;
 
   let channels : Uint8Array = new Uint8Array(8);
 
-  function onChangeValue(channel: number, value: boolean) {
-    setDigital(slot_num, channel, value ? 0: 1);
-  }
-
   ADAMDATA.subscribe(data => {
-    let address = slot_num * 8;
+    let address = slotnum * 8;
     channels = data.digital.slice(address, address + 8);
   });
 </script>
 
 <div class="root">
   <div class="channels">
-    {#each channels as val, i}
-    <ChannelDigital channel={i} state={val === 1} onChange={onChangeValue}/>
+    {#each channels as val, channel}
+    <ChannelDigital {slotnum} {channel} state={val === 1}/>
     {/each}
   </div>
 </div>

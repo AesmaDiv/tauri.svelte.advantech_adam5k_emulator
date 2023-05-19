@@ -34,14 +34,14 @@
   <div class="slots_group">
     {#each Array(8) as _, i}
     <Slider header="SLOT {i}" bind:group={group_analog}>
-      <SlotAnalog slot_num={i}/>
+      <SlotAnalog slotnum={i}/>
     </Slider>
     {/each}
   </div>
   <div class="slots_group">
     {#each Array(8) as _, i}
     <Slider header="SLOT {i}" bind:group={group_digital}>
-      <SlotDigital slot_num={i}/>
+      <SlotDigital slotnum={i}/>
     </Slider>
     {/each}
   </div>

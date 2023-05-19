@@ -2,24 +2,20 @@
   import { ADAMDATA, setAnalog } from "../shared/store";
   import ChannelAnalog from "./ChannelAnalog.svelte";
 
-  export let slot_num : number = 0;
+  export let slotnum : number = 0;
 
   const RANGES: string[] = ["8-bit","12-bit","15-bit","16-bit"];
   const MAXRNG: number[] = [   0xff,   0xfff,  0x7fff,  0xffff];
 
   let range : HTMLInputElement;
 
-  let max_value = MAXRNG[3];
+  let maximum = MAXRNG[3];
   let channels : Uint16Array = new Uint16Array(8)
   let cur_channel : number = 0;
   let cur_value : number = channels[cur_channel];
 
   function onChangeValue() {
-    setAnalog(slot_num, cur_channel, range.valueAsNumber);
-  }
-  function onChangeText(event: Event) {
-    range.valueAsNumber = (<HTMLInputElement>event.target).valueAsNumber;
-    onChangeValue()
+    setAnalog(slotnum, cur_channel, range.valueAsNumber);
   }
   function onChangeChannel(channel: number) {
     cur_channel = channel;
@@ -28,20 +24,20 @@
   function onChangeRange(event: Event) {
     let select : HTMLSelectElement = <HTMLSelectElement>event.target;
     let option : number = select.options.selectedIndex;
-    max_value = MAXRNG[option];
-    if (cur_value > max_value) { cur_value = max_value };
+    maximum = MAXRNG[option];
+    if (cur_value > maximum) { cur_value = maximum };
   }
 
   ADAMDATA.subscribe(data => {
-    let address = slot_num * 8;
+    let address = slotnum * 8;
     channels = data.analog.slice(address, address + 8);
   });
 </script>
 
 <div class="root">
-  <input type="range" bind:this={range} max={max_value} bind:value={cur_value} on:change={onChangeValue}/>
+  <input type="range" bind:this={range} max={maximum} bind:value={cur_value} on:change={onChangeValue}/>
   <div class="config">
-    <input type="number" value={cur_value} on:change={onChangeText}/>
+    <div class="range-value">{cur_value}</div>
     <select on:change={onChangeRange}>
       {#each RANGES as rng}
       <option selected={rng === RANGES[3]}>{rng}</option>
@@ -49,8 +45,8 @@
     </select>
   </div>
   <div class="channels">
-    {#each channels as val, i}
-    <ChannelAnalog channel={i} value={val} selected={i === 0} onSelect={onChangeChannel}/>
+    {#each channels as val, channel}
+    <ChannelAnalog {slotnum} {channel} {maximum} value={val} selected={channel === 0} onSelect={onChangeChannel}/>
     {/each}
   </div>
 </div>
@@ -71,6 +67,12 @@
     justify-content: space-between;
     gap: 5px;
   }
+  .range-value {
+    width: 100%;
+    padding-left: 1ch;
+    border: 1px solid black;
+    border-radius: 0.25em;
+  }
   .channels {
     width: 100%;
     display: flex;
@@ -83,6 +85,11 @@
   input::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
+  }
+  input[type=number] {
+    width: 5ch;
+    padding: 3px 1ch;
+    font-size: medium;
   }
   input[type=range] {
     all: unset;
@@ -104,9 +111,5 @@
    border-radius: 0.2em;
    z-index: 3;
   }
-  input[type=number] {
-    width: 5ch;
-    padding: 3px 1ch;
-    font-size: medium;
-  }
+
 </style>

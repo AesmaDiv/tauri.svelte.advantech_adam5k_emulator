@@ -1,14 +1,16 @@
 <script lang="ts">
+  import { setDigital } from "../shared/store";
   export let state : boolean;
+  export let slotnum : number;
   export let channel : number;
-  export let onChange : (channel: number, value: boolean) => void;
 
   let thumb : HTMLDivElement;
   let label : HTMLDivElement;
 
   function onChangeValue () {
     label?.style.setProperty("outline", "1px solid black");
-    !!onChange && onChange(channel, thumb.classList.contains("enabled"));
+    let value = thumb.classList.contains("enabled") ? 0 : 1;
+    setDigital(slotnum, channel, value);
   }
 
   $: current_state = (() => {
