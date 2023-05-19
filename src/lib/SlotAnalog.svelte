@@ -86,11 +86,6 @@
     -webkit-appearance: none;
     margin: 0;
   }
-  input[type=number] {
-    width: 5ch;
-    padding: 3px 1ch;
-    font-size: medium;
-  }
   input[type=range] {
     all: unset;
     width: 100%;
