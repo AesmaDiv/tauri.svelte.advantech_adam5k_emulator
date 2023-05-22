@@ -29,5 +29,6 @@
   .toggled {
     box-shadow: 0px 2px 2px black;
     margin: 0px 12px 0px 0px;
+    background-color: lightgray;
   }
 </style>

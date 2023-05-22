@@ -13,7 +13,7 @@
   const onRadio = () => !!onSelect && onSelect(channel);
   function onChangeValue() {
     let val = Math.min(maximum, input?.valueAsNumber || 0);
-    input?.style.setProperty("outline", "1px solid black");
+    input?.style.setProperty("outline", "2px solid black");
     setAnalog(slotnum, channel, val);
   }
 
