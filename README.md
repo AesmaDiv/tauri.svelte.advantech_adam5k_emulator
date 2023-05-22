@@ -1,7 +1,5 @@
-# Tauri + Svelte + Typescript
+# Advantech ADAM 5000 / TCP Emulator
 
-This template should help get you started developing with Tauri, Svelte and TypeScript in Vite.
 
-## Recommended IDE Setup
-
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
+Эмулятор работы микроконтроллера Adam5000TCP/Modbus запускает сервер по указанному IP (порт 502) и работает по стандартному Modbus протоколу.
+Создано с использованием технологии Tauri + Svelte.
